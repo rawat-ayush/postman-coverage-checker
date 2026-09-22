@@ -212,7 +212,7 @@ service_subject_map:
 action_synonyms:
   Add:     [add, create, new, post]
   Inq:     [get, inquire, inquiry, fetch, retrieve, read, view]
-  ListInq: [list, get list, inquire list, get, list inquiry]
+  ListInq: [list, listinq, list inquiry, inquire list]
   Mod:     [update, modify, edit, change, put, patch]
   Del:     [delete, remove]
 

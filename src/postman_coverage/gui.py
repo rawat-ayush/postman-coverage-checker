@@ -670,15 +670,17 @@ class CoverageApp(tk.Tk):
             top_score = r.suggestions[0][1] if r.suggestions else 0
             detail = f"spec: {r.spec.display}   |   closest: {top} (score {top_score})"
         else:  # partial
-            missing_types = [
-                sm.spec.type for sm in r.sub_matches if not sub_is_type_covered(sm)
-            ]
-            covered_types = [
-                sm.spec.type for sm in r.sub_matches if sub_is_type_covered(sm)
-            ]
+            def _label(sm: MatchResult) -> str:
+                return sm.spec.type if sm.spec.type else (sm.spec.action or "?")
+
+            def _covered(sm: MatchResult) -> bool:
+                return sub_is_type_covered(sm) if sm.spec.type else sm.is_covered
+
+            missing_parts = [_label(sm) for sm in r.sub_matches if not _covered(sm)]
+            covered_parts = [_label(sm) for sm in r.sub_matches if _covered(sm)]
             detail = (
-                f"spec: {r.spec.display}   |   missing types: {missing_types}   "
-                f"|   covered types: {covered_types}"
+                f"spec: {r.spec.display}   |   missing: {missing_parts}   "
+                f"|   covered: {covered_parts}"
             )
         label = ("[MISS] " if kind == "missing" else "[PART] ") + r.spec.filename
         item_id = self.tree.insert(

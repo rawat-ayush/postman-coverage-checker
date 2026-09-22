@@ -79,21 +79,32 @@ def _missing_entry(r: MatchResult) -> dict:
 
 
 def _partial_entry(r: MatchResult) -> dict:
-    covered_subs = [sm for sm in r.sub_matches if sub_is_type_covered(sm)]
-    missing_subs = [sm for sm in r.sub_matches if not sub_is_type_covered(sm)]
+    # The sub_matches were built by one of two expansions:
+    # * multi-type YAML  -> sub_spec.type is set, sub_spec.action inherited
+    # * base-service YAML with OpenAPI ops -> sub_spec.action is set, type=None
+    # Pick the identifier + coverage predicate accordingly, on a per-sub basis
+    # so mixed use is safe.
+    def label(sm: MatchResult) -> str:
+        return sm.spec.type if sm.spec.type else (sm.spec.action or "?")
+
+    def is_covered(sm: MatchResult) -> bool:
+        return sub_is_type_covered(sm) if sm.spec.type else sm.is_covered
+
+    covered_subs = [sm for sm in r.sub_matches if is_covered(sm)]
+    missing_subs = [sm for sm in r.sub_matches if not is_covered(sm)]
     return {
         "yaml_file": r.spec.filename,
         "spec": _spec_display(r),
-        "missing_types": [sm.spec.type for sm in missing_subs],
-        "covered_types": [sm.spec.type for sm in covered_subs],
+        "missing_parts": [label(sm) for sm in missing_subs],
+        "covered_parts": [label(sm) for sm in covered_subs],
         "matches": [
-            f"{sm.spec.type} -> {sm.matched_request.full_path}"
+            f"{label(sm)} -> {sm.matched_request.full_path}"
             for sm in covered_subs
             if sm.matched_request
         ],
         "closest_matches_for_missing": [
             {
-                "type": sm.spec.type,
+                "part": label(sm),
                 "candidates": _closest_matches(sm),
             }
             for sm in missing_subs

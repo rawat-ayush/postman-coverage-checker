@@ -68,6 +68,20 @@ class GithubClient:
             for item in data
         ]
 
+    def get_file_content(
+        self, owner: str, repo: str, path: str, branch: str
+    ) -> str:
+        """Fetch the raw text of `path` on `branch`."""
+        url = f"{_API}/repos/{owner}/{repo}/contents/{path.strip('/')}"
+        r = self._session.get(
+            url,
+            params={"ref": branch},
+            timeout=self._timeout,
+            headers={"Accept": "application/vnd.github.raw"},
+        )
+        r.raise_for_status()
+        return r.text
+
     def _get_tree(self, owner: str, repo: str, branch: str) -> list[dict]:
         url = f"{_API}/repos/{owner}/{repo}/git/trees/{branch}"
         r = self._session.get(url, params={"recursive": "1"}, timeout=self._timeout)
