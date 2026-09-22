@@ -55,6 +55,16 @@ def _require_env(name: str) -> str:
     return val
 
 
+def _kr_get(key: str) -> str | None:
+    """Best-effort OS keyring lookup; returns None if unavailable."""
+    try:
+        from . import credentials
+
+        return credentials.get(key)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 # Filenames are merged left-to-right; later entries win. This lets a
 # `cores.local.yaml` hold just credentials while the shared file supplies
 # the cores and matcher tables (and vice versa).
@@ -132,20 +142,33 @@ def load_config(
                 return s
         return ""
 
-    gh_tok = _pick(github_token, yaml_gh.get("token"), os.getenv("GITHUB_TOKEN"))
-    pm_key = _pick(postman_api_key, yaml_pm.get("api_key"), os.getenv("POSTMAN_API_KEY"))
+    gh_tok = _pick(
+        github_token,
+        yaml_gh.get("token"),
+        os.getenv("GITHUB_TOKEN"),
+        _kr_get("github_token"),
+    )
+    pm_key = _pick(
+        postman_api_key,
+        yaml_pm.get("api_key"),
+        os.getenv("POSTMAN_API_KEY"),
+        _kr_get("postman_api_key"),
+    )
     ws_id = _pick(
-        postman_workspace_id, yaml_pm.get("workspace_id"), os.getenv("POSTMAN_WORKSPACE_ID")
+        postman_workspace_id,
+        yaml_pm.get("workspace_id"),
+        os.getenv("POSTMAN_WORKSPACE_ID"),
+        _kr_get("postman_workspace_id"),
     )
     if not gh_tok:
         raise RuntimeError(
-            "Missing GitHub token (set github.token in the config, GITHUB_TOKEN env, "
-            "or pass via GUI)."
+            "Missing GitHub token (set GITHUB_TOKEN env, save via GUI to OS keyring, "
+            "or put github.token in the config)."
         )
     if not pm_key:
         raise RuntimeError(
-            "Missing Postman API key (set postman.api_key in the config, "
-            "POSTMAN_API_KEY env, or pass via GUI)."
+            "Missing Postman API key (set POSTMAN_API_KEY env, save via GUI to OS keyring, "
+            "or put postman.api_key in the config)."
         )
 
     return AppConfig(

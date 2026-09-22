@@ -13,6 +13,7 @@ from tkinter import filedialog, messagebox, ttk
 from dotenv import load_dotenv
 
 from .config import AppConfig, CoreConfig, load_config
+from . import credentials
 from .coverage import check_core
 from .github_client import GithubClient
 from .matcher import MatchResult, MatchTier, Matcher, sub_is_type_covered
@@ -144,7 +145,9 @@ class CoverageApp(tk.Tk):
         creds.pack(fill="x", **pad)
 
         ttk.Label(creds, text="GitHub PAT:").grid(row=0, column=0, sticky="w", padx=4, pady=2)
-        self.gh_token_var = tk.StringVar(value=os.getenv("GITHUB_TOKEN", ""))
+        self.gh_token_var = tk.StringVar(
+            value=os.getenv("GITHUB_TOKEN") or credentials.get(credentials.KEY_GITHUB_TOKEN) or ""
+        )
         self.gh_entry = ttk.Entry(creds, textvariable=self.gh_token_var, show="*", width=50)
         self.gh_entry.grid(row=0, column=1, sticky="ew", padx=4, pady=2)
         self.show_gh_var = tk.BooleanVar(value=False)
@@ -154,7 +157,9 @@ class CoverageApp(tk.Tk):
         ).grid(row=0, column=2, padx=4)
 
         ttk.Label(creds, text="Postman API key:").grid(row=1, column=0, sticky="w", padx=4, pady=2)
-        self.pm_key_var = tk.StringVar(value=os.getenv("POSTMAN_API_KEY", ""))
+        self.pm_key_var = tk.StringVar(
+            value=os.getenv("POSTMAN_API_KEY") or credentials.get(credentials.KEY_POSTMAN_API_KEY) or ""
+        )
         self.pm_entry = ttk.Entry(creds, textvariable=self.pm_key_var, show="*", width=50)
         self.pm_entry.grid(row=1, column=1, sticky="ew", padx=4, pady=2)
         self.show_pm_var = tk.BooleanVar(value=False)
@@ -164,19 +169,36 @@ class CoverageApp(tk.Tk):
         ).grid(row=1, column=2, padx=4)
 
         ttk.Label(creds, text="Postman workspace ID:").grid(row=2, column=0, sticky="w", padx=4, pady=2)
-        self.pm_ws_var = tk.StringVar(value=os.getenv("POSTMAN_WORKSPACE_ID", ""))
+        self.pm_ws_var = tk.StringVar(
+            value=os.getenv("POSTMAN_WORKSPACE_ID") or credentials.get(credentials.KEY_POSTMAN_WORKSPACE_ID) or ""
+        )
         ttk.Entry(creds, textvariable=self.pm_ws_var, width=50).grid(
             row=2, column=1, sticky="ew", padx=4, pady=2
         )
 
         creds.columnconfigure(1, weight=1)
 
+        # --- Keyring row ---------------------------------------------------
+        kr_row = ttk.Frame(creds)
+        kr_row.grid(row=3, column=0, columnspan=3, sticky="ew", padx=4, pady=(6, 2))
+        self._keyring_status = tk.StringVar(
+            value=self._keyring_status_text()
+        )
+        ttk.Label(kr_row, textvariable=self._keyring_status, foreground="#555").pack(side="left")
+        ttk.Button(
+            kr_row, text="Save to OS keyring", command=self._save_credentials_to_keyring
+        ).pack(side="right", padx=2)
+        ttk.Button(
+            kr_row, text="Clear stored credentials", command=self._clear_keyring
+        ).pack(side="right", padx=2)
+
         ttk.Label(
             parent,
             text=(
-                "Tip: credentials can also live in the config file under "
-                "`github.token` / `postman.api_key`, or in a .env file. "
-                "Values entered here override both."
+                "Credentials load in this order: environment variables → OS keyring → "
+                "config file. Values entered here override all of the above for the "
+                "current session; click 'Save to OS keyring' to persist them across "
+                "launches on this machine."
             ),
             wraplength=780,
             foreground="#555",
@@ -298,6 +320,46 @@ class CoverageApp(tk.Tk):
         path = filedialog.askdirectory(title="Select reports directory")
         if path:
             self.reports_var.set(path)
+
+    def _keyring_status_text(self) -> str:
+        if not credentials.is_available():
+            return "OS keyring: unavailable on this system."
+        stored = [k for k in credentials.ALL_KEYS if credentials.get(k)]
+        if not stored:
+            return "OS keyring: available (nothing stored yet)."
+        return f"OS keyring: {len(stored)}/3 credential(s) stored."
+
+    def _save_credentials_to_keyring(self) -> None:
+        if not credentials.is_available():
+            messagebox.showerror(
+                "Keyring unavailable",
+                "No OS keyring backend is available on this system.",
+            )
+            return
+        ok = credentials.set_many({
+            credentials.KEY_GITHUB_TOKEN: self.gh_token_var.get().strip(),
+            credentials.KEY_POSTMAN_API_KEY: self.pm_key_var.get().strip(),
+            credentials.KEY_POSTMAN_WORKSPACE_ID: self.pm_ws_var.get().strip(),
+        })
+        self._keyring_status.set(self._keyring_status_text())
+        if ok:
+            self.status_var.set("Credentials saved to OS keyring.")
+        else:
+            messagebox.showerror(
+                "Save failed", "Could not write one or more credentials to the OS keyring."
+            )
+
+    def _clear_keyring(self) -> None:
+        if not credentials.is_available():
+            return
+        if not messagebox.askyesno(
+            "Clear stored credentials",
+            "Remove all Postman-Coverage-Checker credentials from the OS keyring?",
+        ):
+            return
+        credentials.clear()
+        self._keyring_status.set(self._keyring_status_text())
+        self.status_var.set("Stored credentials cleared from OS keyring.")
 
     def _load_config(self) -> None:
         try:
