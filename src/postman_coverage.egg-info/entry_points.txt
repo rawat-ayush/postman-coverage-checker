@@ -1,0 +1,3 @@
+[console_scripts]
+postman-coverage = postman_coverage.cli:main
+postman-coverage-gui = postman_coverage.gui:main

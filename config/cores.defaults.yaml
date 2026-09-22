@@ -1,0 +1,244 @@
+# Default configuration for the Postman coverage checker.
+#
+# Source of YAMLs: https://github.com/Fiserv/banking-hub/tree/Develop-InWork/reference
+# Each core points at its own folder under `reference/`.
+#
+# SECURITY: this file holds tokens once you fill them in. Either keep a
+# CHANGE_ME copy committed and put real secrets in `config/cores.local.yaml`
+# (already gitignored), or gitignore this file entirely.
+
+cores:
+  PRM:
+    name: Premier
+    github:
+      owner: Fiserv
+      repo: banking-hub
+      path: reference/Premier
+      branch: Develop-InWork
+    postman_collection_id: 52332743-70a7af9c-041a-436a-9f1c-3afe6a2f0128
+
+  SIG:
+    name: Signature
+    github:
+      owner: Fiserv
+      repo: banking-hub
+      path: reference/Signature
+      branch: Develop-InWork
+    postman_collection_id: 52332743-2ed563d6-25f6-4b87-ad0d-ed32727964e1
+
+  PRC:
+    name: Precision
+    github:
+      owner: Fiserv
+      repo: banking-hub
+      path: reference/Precision
+      branch: Develop-InWork
+    postman_collection_id: 34972212-025dae6c-fc3d-43f7-8f90-c5329e452503
+
+  DNA:
+    name: DNA
+    github:
+      owner: Fiserv
+      repo: banking-hub
+      path: reference/DNA
+      branch: Develop-InWork
+    postman_collection_id: 52332743-3af98628-68f9-43dd-bd5f-60c3e4379691
+
+  FNX:
+    name: Finxact
+    aliases: [FIN]
+    github:
+      owner: Fiserv
+      repo: banking-hub
+      path: reference/Finxact
+      branch: Develop-InWork
+    postman_collection_id: 52332743-51bb3cc8-2d9b-44b7-81cb-80c99e7209b3
+
+  CT:
+    name: Cleartouch
+    github:
+      owner: Fiserv
+      repo: banking-hub
+      path: reference/Cleartouch
+      branch: Develop-InWork
+    postman_collection_id: 52332743-f908b5db-31ed-4f74-b59d-fcb424daf82e
+
+  PRT:
+    name: Portico
+    # NOTE: no `reference/Portico/` folder exists on the repo yet; leaving
+    # the path in place so it is easy to enable once the reference is added.
+    github:
+      owner: Fiserv
+      repo: banking-hub
+      path: reference/Portico
+      branch: Develop-InWork
+    postman_collection_id: 38056800-4f4bdd9e-89db-4e11-b1d3-b813aa7caffc
+
+  EPOC:
+    name: EPOC
+    # NOTE: no matching EPOC collection was found in the Postman workspace;
+    # fill in the UID once the collection exists.
+    github:
+      owner: Fiserv
+      repo: banking-hub
+      path: reference/EPOC
+      branch: Develop-InWork
+    postman_collection_id: CHANGE_ME
+
+# ---------------------------------------------------------------------------
+# Matcher tables
+# ---------------------------------------------------------------------------
+# For every YAML the parser extracts (Service, Action, Type) from the file
+# name. The matcher then looks for a Postman folder whose name contains any
+# of the subject tokens for that Service, and a request inside that folder
+# whose name contains an action synonym and (optionally) a type synonym.
+
+# YAML `Service` token -> keyword(s) expected in the Postman folder name.
+service_subject_map:
+  # ----- accounts -----
+  AcctService:                              [account]
+  AccountService:                           [account]
+  AcctHoldService:                          [account hold, hold]
+  AccountHoldService:                       [account hold, hold]
+  StopHoldService:                          [stop hold]
+  AcctTrnService:                           [account transaction, transaction, txn]
+  AccountTransactionService:                [account transaction, transaction, txn]
+  AccountTransactionHistoryService:         [account transaction history, transaction history]
+  TxnService:                               [transaction, txn]
+  TransactionService:                       [transaction, txn]
+  AcctCollateralRelService:                 [account collateral, collateral]
+  AccountCollateralRelationshipService:     [account collateral, collateral]
+  AccountCollateralService:                 [account collateral, collateral]
+  AcctDocTypeRelService:                    [account document, document type]
+  AccountDocumentTypeRelationshipService:   [account document, document type]
+  AccountDistributionService:               [account distribution, distribution]
+  AccountDistibutionService:                [account distribution, distribution]  # typo in Postman
+  AccountPayOffService:                     [account pay off, payoff, pay off]
+  AccountPayOff:                            [account pay off, payoff, pay off]
+  AcctPayOffService:                        [account pay off, payoff, pay off]
+  MultiAcctService:                         [multi account]
+  MultiAccountService:                      [multi account]
+  ValidateAccountService:                   [validate account, validate]
+
+  # ----- transfers / payments -----
+  XferService:                              [transfer, xfer]
+  TransferService:                          [transfer, xfer]
+  PaymentsService:                          [payments, payment]
+  ACHExternalAccountTransferService:        [ach external account transfer, ach, external transfer]
+
+  # ----- accountholder / party -----
+  AddressService:                           [address, addr]
+  AddrService:                              [address, addr]
+  PartyService:                             [party]
+  PartyPartiesService:                      [party parties, party]
+  PartyAcctRelService:                      [party account]
+  PartyAccountRelationshipService:          [party account]
+  PartyAcctService:                         [party account]
+  PartyAccountService:                      [party account]
+  BeneficialOwnerService:                   [beneficial owner, beneficial]
+  BeneficiaryService:                       [beneficiary]
+
+  # ----- cards -----
+  CardService:                              [card]
+  CardTokenService:                         [card token, card]
+  CardAcctRelService:                       [card account relationship, card account]
+  CardAccountRelationshipService:           [card account relationship, card account]
+  CardAcctRelSpecService:                   [card account relationship specification]
+  CardAccountRelationshipSpecificationService: [card account relationship specification]
+  CardTokenAcctRelService:                  [card token, card account]
+
+  # ----- servicing -----
+  BranchService:                            [branch]
+  ClientDefinedFieldService:                [client defined field]
+  ClientFieldSpecService:                   [client field spec, client field specification]
+  ClientFieldSpecificationService:          [client field spec, client field specification]
+  EnumTableService:                         [enum table, enumeration]
+  EnumerationTableService:                  [enumeration]
+  HolidayService:                           [holiday]
+  HostSystemService:                        [host system]
+  HostLogonService:                         [host logon]
+  ServicingService:                         [servicing]
+  MemoTicklerService:                       [memo tickler, memo, tickler]
+  RestrictionService:                       [restriction]
+  AutoEnrollmentService:                    [auto enrollment, enrollment]
+  ProductService:                           [product]
+  ProductSpecificationService:              [product specification]
+  DocumentService:                          [document]
+  DocumentPreferencesService:               [document preferences]
+  StopChkService:                           [stop check, stop chk]
+  StopCheckService:                         [stop check]
+  StopItemService:                          [stop item]
+
+  # ----- transactions extras -----
+  CreditService:                            [credit]
+  CreditAddService:                         [credit add]
+  CreditLineService:                        [credit line]
+  DebitService:                             [debit]
+
+  # ----- collateral / loans / other -----
+  CollateralService:                        [collateral]
+  CollateralItemService:                    [collateral item]
+  LoanService:                              [loan]
+  IndirectLiabilityService:                 [indirect liability]
+  LoanIndirectLiabilityService:             [indirect liability]
+  OwnershipService:                         [ownership]
+  OwnerShipService:                         [ownership]
+  ParticipationService:                     [participation]
+  CombinedStatementService:                 [combined statement]
+  eAgreementService:                        [eagreement, agreement]
+
+  # ----- portfolio / party-portfolio -----
+  PortfolioService:                         [portfolio]
+  PortfolioAddrService:                     [portfolio]
+  PortfolioAddressService:                  [portfolio]
+  PortPartyRelService:                      [portfolio, party]
+  PartyPortRelService:                      [portfolio, party]
+  PartyPartyRelService:                     [party parties, party]
+  ProdListService:                          [product list, product]
+  ProductInterestRateService:               [product interest rate]
+
+  # ----- misc products / accounts -----
+  EscrowService:                            [escrow]
+  RenewalService:                           [renewal]
+  SweepService:                             [sweep]
+  SafeDepositBoxService:                    [safe deposit box, sdb]
+  SafeDepositBoxInvService:                 [safe deposit box, sdb]
+  TaxFormsService:                          [tax forms, tax]
+  ePreferenceService:                       [epreferences, epreference, preferences]
+  RegionService:                            [region]
+  region-service:                           [region]
+
+# YAML `Action` token -> verb synonyms used in Postman request names.
+action_synonyms:
+  Add:     [add, create, new, post]
+  Inq:     [get, inquire, inquiry, fetch, retrieve, read, view]
+  ListInq: [list, get list, inquire list, get, list inquiry]
+  Mod:     [update, modify, edit, change, put, patch]
+  Del:     [delete, remove]
+
+# YAML `Type` token -> synonyms in Postman request names.
+type_synonyms:
+  DDA:       [dda]
+  CDA:       [cda]
+  SDA:       [sda]
+  DDL:       [ddl]
+  LOAN:      [loan]
+  Loan:      [loan]
+  CARD:      [card]
+  DEPOSIT:   [deposit, deposits]
+  DEPOSITS:  [deposit, deposits]
+  Deposit:   [deposit, deposits]
+  Deposits:  [deposit, deposits]
+  Immediate: [immediate]
+  Recurring: [recurring]
+  Recur:     [recurring, recur]
+  AMS:       [ams]
+  SDB:       [sdb]
+  Teller:    [teller]
+  Party:     [party]
+  Acct:      [account, acct]
+
+matcher:
+  # RapidFuzz score (0-100) below which a candidate is NOT reported as a
+  # suggestion for an unmatched YAML.
+  suggestion_min_score: 55

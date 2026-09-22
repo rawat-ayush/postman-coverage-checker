@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+reports/*.json
+!reports/.gitkeep
+.pytest_cache/
+config/*.local.yaml

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "postman-coverage"
+version = "0.1.0"
+description = "Check YAML API specs against a Postman workspace collection."
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.32.0",
+    "PyYAML>=6.0",
+    "rapidfuzz>=3.9.0",
+    "python-dotenv>=1.0.1",
+    "truststore>=0.9.0",
+]
+
+[project.scripts]
+postman-coverage = "postman_coverage.cli:main"
+postman-coverage-gui = "postman_coverage.gui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
