@@ -35,15 +35,6 @@ Three special cases beyond the plain filename match:
 Each YAML lands in one of four buckets: **covered**, **partial** (some
 sub-parts covered), **missing**, or **unparseable**.
 
-```mermaid
-flowchart LR
-  A[YAML on GitHub] --> B{filename has an action?}
-  B -- yes --> C[matcher.match<br/>single Postman lookup]
-  B -- no --> D[fetch YAML content]
-  D --> E[extract operations from paths[].tags]
-  E --> F[match once per distinct action]
-  F --> G[aggregate: covered / partial / missing]
-```
 
 ## Install
 

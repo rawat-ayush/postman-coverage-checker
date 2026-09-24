@@ -14,7 +14,7 @@ from .postman_client import PostmanRequest
 class MatchTier(str, Enum):
     STRICT_SCOPED = "strict_scoped"        # right folder + action + subject + type
     RELAXED_SCOPED = "relaxed_scoped"      # right folder + action + subject (no type)
-    COLLECTION_WIDE = "collection_wide"    # any folder + action + subject + type
+    COLLECTION_WIDE = "collection_wide"    # deprecated: retained for backwards-compat, never emitted
     PARTIAL = "partial"                    # multi-type yaml: only some types found
     NONE = "none"
 
@@ -57,6 +57,10 @@ class MatchResult:
 _NUMBER_PREFIX_RE = re.compile(r"^\s*(\d+(\.\d+)*\.?\s*)+")
 _TOKEN_SPLIT_RE = re.compile(r"[\s\-_/]+")
 _CAMEL_SPLIT_RE = re.compile(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z0-9]+|[A-Z]+")
+# Generic filler words that appear in Postman folder names but carry no
+# service identity. Ignored when doing strict folder-name comparisons for
+# unknown (unconfigured) services.
+_FOLDER_FILLER = {"service", "services", "svc"}
 
 
 def _camel_tokens(name: str) -> list[str]:
@@ -69,10 +73,21 @@ def _camel_tokens(name: str) -> list[str]:
 
 
 def _normalize(name: str) -> set[str]:
-    """Lowercase, strip numbering prefix, split into token set."""
+    """Lowercase, strip numbering prefix, split into token set. Also splits
+    CamelCase runs so a Postman request named 'Update SafeDepositBoxService'
+    yields {'update', 'safe', 'deposit', 'box', 'service', ...} instead of
+    a single opaque 'safedepositboxservice' token.
+    """
     n = _NUMBER_PREFIX_RE.sub("", name or "")
-    n = n.lower()
-    tokens = {t for t in _TOKEN_SPLIT_RE.split(n) if t}
+    tokens: set[str] = set()
+    for part in _TOKEN_SPLIT_RE.split(n):
+        if not part:
+            continue
+        tokens.add(part.lower())
+        for cam in _CAMEL_SPLIT_RE.findall(part):
+            c = cam.lower()
+            if c:
+                tokens.add(c)
     return tokens
 
 
@@ -85,6 +100,18 @@ def _lower_set(values: list[str]) -> set[str]:
             if t:
                 out.add(t)
     return out
+
+
+def _variant_token_sets(values: list[str]) -> list[set[str]]:
+    """One token set per subject variant, filler-stripped. Preserves the
+    variant boundary so a multi-word variant like 'client defined field' is
+    only satisfied by a folder that contains ALL three tokens."""
+    variants: list[set[str]] = []
+    for v in values:
+        tokens = {t for t in _TOKEN_SPLIT_RE.split(v.lower()) if t} - _FOLDER_FILLER
+        if tokens:
+            variants.append(tokens)
+    return variants
 
 
 class Matcher:
@@ -102,13 +129,22 @@ class Matcher:
 
     def match(self, spec: YamlSpec, requests: list[PostmanRequest]) -> MatchResult:
         subject_values = self._service_subject_map.get(spec.service)
+        is_configured = subject_values is not None
         if subject_values is None:
-            subject_values = _camel_tokens(spec.service) or [spec.service]
+            # Combine the camel-split tokens into a single variant so the
+            # fallback compares the whole service name against the folder,
+            # not each token independently.
+            camel = _camel_tokens(spec.service)
+            subject_values = [" ".join(camel)] if camel else [spec.service]
         subject_tokens = _lower_set(subject_values)
+        subject_variants = _variant_token_sets(subject_values)
         action_tokens = _lower_set(self._action_synonyms.get(spec.action, [spec.action])) if spec.action else set()
         type_tokens = _lower_set(self._type_synonyms.get(spec.type, [spec.type])) if spec.type else set()
 
-        scoped = [r for r in requests if self._request_in_service_folder(r, subject_tokens)]
+        scoped = [
+            r for r in requests
+            if self._request_in_service_folder(r, subject_variants, strict=not is_configured)
+        ]
 
         # Tier 1: scoped + all three axes.
         if type_tokens and action_tokens:
@@ -126,12 +162,9 @@ class Matcher:
         elif scoped:
             return MatchResult(spec, MatchTier.RELAXED_SCOPED, scoped[0], [])
 
-        # Tier 3: collection-wide + all axes we have.
-        if action_tokens:
-            hit = self._find(requests, subject_tokens, action_tokens, type_tokens)
-            if hit:
-                return MatchResult(spec, MatchTier.COLLECTION_WIDE, hit, [])
-
+        # No collection-wide fallback: a YAML with no matching Postman folder
+        # is reported as missing, with fuzzy suggestions from `_miss` pointing
+        # to any look-alike request that lives in another folder.
         return self._miss(spec, requests)
 
     def _miss(self, spec: YamlSpec, pool: list[PostmanRequest]) -> MatchResult:
@@ -146,12 +179,28 @@ class Matcher:
         return MatchResult(spec, MatchTier.NONE, None, scored[:3])
 
     def _request_in_service_folder(
-        self, req: PostmanRequest, subject_tokens: set[str]
+        self,
+        req: PostmanRequest,
+        subject_variants: list[set[str]],
+        strict: bool = False,
     ) -> bool:
+        """A folder qualifies as this service's folder iff one of the
+        configured subject variants is *fully contained* in the folder's
+        meaningful tokens (i.e. every token of that variant appears in the
+        folder name). For unconfigured/fallback services, require exact
+        equality with a variant to avoid picking a look-alike folder.
+        """
+        if not subject_variants:
+            return False
         for folder in req.folder_path:
-            folder_tokens = _normalize(folder)
-            if folder_tokens & subject_tokens:
-                return True
+            folder_tokens = _normalize(folder) - _FOLDER_FILLER
+            for variant in subject_variants:
+                if strict:
+                    if folder_tokens == variant:
+                        return True
+                else:
+                    if variant.issubset(folder_tokens):
+                        return True
         return False
 
     def _find(
